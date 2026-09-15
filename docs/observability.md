@@ -28,11 +28,15 @@ Optional vLLM/DCGM scrape targets are down until connected. This is not zero GPU
 - API traffic and p95 request latency.
 - Analysis completion/failure counts.
 - Policy decisions and model outcomes.
+- Provider response latency, input/output token rates and usage-report availability.
+- Reported cache ratio, reasoning-token counts and configured-price cost estimates.
 - Scrape health and Collector export failures.
 - Supported vLLM queue/cache and DCGM utilization/memory metrics when connected.
 - Tempo traces and sanitized Loki logs through provisioned sources.
 
 External metric names can change; verify names and semantics on the selected server before interpreting a panel. Empty GPU panels are unmeasured.
+
+The 22-panel dashboard distinguishes provider response metrics from GPU internals. Cached and reasoning tokens are subsets, not extra tokens. Requests without cache metadata do not enter the cache-ratio denominator. Durable team-scoped inference records are available in the application; published synthetic experiments are shown separately in Provider lab. See [provider visibility and accounting boundaries](provider-lab.md).
 
 ## Failure drills
 

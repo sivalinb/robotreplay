@@ -74,6 +74,14 @@ CREATE TABLE IF NOT EXISTS ledger(
 CREATE TABLE IF NOT EXISTS eval_runs(
  id TEXT PRIMARY KEY, team TEXT NOT NULL, created REAL NOT NULL, report TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS inference_events(
+ id INTEGER PRIMARY KEY, team TEXT NOT NULL, created REAL NOT NULL,
+ provider TEXT NOT NULL, operation TEXT NOT NULL, outcome TEXT NOT NULL,
+ duration_ms REAL NOT NULL, input_tokens INTEGER, output_tokens INTEGER,
+ cached_input_tokens INTEGER, reasoning_tokens INTEGER, cost_usd REAL,
+ cost_basis TEXT NOT NULL, http_status INTEGER, finish_reason TEXT
+);
+CREATE INDEX IF NOT EXISTS inference_team ON inference_events(team,created);
 """
 
 

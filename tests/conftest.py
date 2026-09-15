@@ -68,6 +68,7 @@ def model_settings(settings):
         settings,
         provider="nebius",
         model="test-model",
+        model_api_key="test-only-token",
         model_budget_usd=1,
         input_usd_per_million=1,
         output_usd_per_million=2,

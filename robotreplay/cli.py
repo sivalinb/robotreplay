@@ -21,6 +21,16 @@ def main():
     init.add_argument("--team", help="Reuse an existing team ID only for an authorized mentor")
     evaluation = commands.add_parser("evaluate")
     evaluation.add_argument("--output", type=Path, default=Path("artifacts/policy-evaluation.json"))
+    provider_eval = commands.add_parser("provider-evaluate")
+    provider_eval.add_argument("--execute", action="store_true")
+    provider_eval.add_argument("--repeats", type=int, default=1)
+    provider_eval.add_argument(
+        "--output", type=Path, default=Path("artifacts/provider-evaluation.json")
+    )
+    cache_eval = commands.add_parser("cache-evaluate")
+    cache_eval.add_argument("--execute", action="store_true")
+    cache_eval.add_argument("--pairs", type=int, default=3)
+    cache_eval.add_argument("--output", type=Path, default=Path("artifacts/cache-evaluation.json"))
     bench = commands.add_parser("benchmark")
     bench.add_argument("--base-url", default="http://127.0.0.1:8001/v1")
     bench.add_argument("--model", required=True)
@@ -64,6 +74,9 @@ def main():
                 provider="local",
                 model="",
                 model_api_key="",
+                model_api_key_file="",
+                embedding_api_key="",
+                embedding_api_key_file="",
                 otlp_endpoint="",
             )
             setup_demo(settings)
@@ -94,6 +107,30 @@ def main():
             )
         )
         raise SystemExit(0 if report["release_gate"] == "pass" else 1)
+    elif args.command == "provider-evaluate":
+        from robotreplay.benchmark import save_report
+        from robotreplay.provider_eval import evaluate_provider
+
+        report = asyncio.run(evaluate_provider(settings, args.execute, args.repeats))
+        save_report(report, args.output)
+        print(
+            json.dumps(
+                {
+                    "status": report["status"],
+                    "passed": report.get("passed"),
+                    "total": report["total"],
+                    "output": str(args.output),
+                }
+            )
+        )
+        raise SystemExit(1 if report.get("release_gate") == "hold" else 0)
+    elif args.command == "cache-evaluate":
+        from robotreplay.benchmark import save_report
+        from robotreplay.provider_eval import evaluate_cache
+
+        report = asyncio.run(evaluate_cache(settings, args.execute, args.pairs))
+        save_report(report, args.output)
+        print(json.dumps({"status": report["status"], "output": str(args.output)}))
     elif args.command == "benchmark":
         from robotreplay.benchmark import benchmark, save_report
 

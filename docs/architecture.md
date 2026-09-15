@@ -28,6 +28,8 @@ The subprocess is not a hardened hostile-media sandbox on a developer laptop. Th
 
 Only configured text-model requests leave the application. Raw media and human annotations stay local by default. Question redaction removes common email/number patterns; it is not a general PII detector. Keep identifying child information out of model questions.
 
+Hosted providers have fixed matching endpoint defaults. Credentials can load from separate server-side files; the app never exposes them through the browser. Fireworks uses opaque keyed team identifiers for session affinity and cache isolation. Inference events contain bounded outcome categories and usage numbers, with team scope and retention. Published synthetic provider experiments use a separate reviewed artifact and do not launch requests from the dashboard.
+
 The optional NeMo input rail runs a registered application-policy action without a generation model. This verifies the integration, not broad semantic jailbreak detection. LangSmith tracing is explicitly disabled around the graph to avoid exporting graph inputs through ambient environment settings.
 
 ## Extension points

@@ -27,7 +27,7 @@ action('#logout',async()=>{await api('/api/logout',{method:'POST'});location.rel
 $$('[data-view]').forEach(button=>button.addEventListener('click',async()=>{
   state.view=button.dataset.view;$$('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
   $$('[data-page]').forEach(p=>p.hidden=p.dataset.page!==state.view);
-  try{if(state.view==='observe')await dashboard();if(state.view==='evals'){const r=await api('/api/evaluations');if(r.length)renderEval(r[0]);}}
+  try{if(state.view==='observe')await dashboard();if(state.view==='providers')await providerLab();if(state.view==='evals'){const r=await api('/api/evaluations');if(r.length)renderEval(r[0]);}}
   catch(e){notice(e.message,true);}
 }));
 async function loadClips(){
@@ -93,7 +93,7 @@ const stages=[
   ['01','Capture & consent','Python FastAPI · browser video','Permission manifest, source hash, upload limits.','ingest.persist'],
   ['02','Analyze the visible scene','FFmpeg · OpenCV · NumPy','Bounded child process; green-marker baseline; explicit visibility gaps.','media.analyze'],
   ['03','Store exact evidence','SQLite WAL · FTS5 · local media','Team scope, timestamps, provenance, retention and source deletion.','Scoped database access'],
-  ['04','Investigate with read tools','LangGraph · Pydantic · templates','Fixed graph and three read tools; optional Nebius / vLLM selection.','investigate + tools.*'],
+  ['04','Investigate with read tools','LangGraph · Pydantic · templates','Fixed graph and three read tools; Nebius / Fireworks / vLLM selection.','investigate + tools.*'],
   ['05','Check the response','Application policy · optional NeMo','Approved question IDs, supported evidence IDs, deadline and cost gates.','policy.input / policy.output'],
   ['06','Students choose the next test','Python API · HTML video · canvas','Visible evidence and human annotations; no notebook authorship.','Review, correction, evaluation'],
 ];
@@ -101,7 +101,7 @@ function node(items){return items.map(x=>'<div class="node"><em>'+esc(x[0])+'</e
 $('#architecture').innerHTML='<div class="diagram">'+node(stages.slice(0,3))+'</div><p class="muted">↓ Evidence and team scope enter the investigation</p><div class="diagram">'+node(stages.slice(3))+'</div><div class="foundation"><strong>Observability across all stages</strong><p>OpenTelemetry → local trace store + optional OTLP Collector → Tempo / Grafana. Prometheus reads bounded API, policy, and worker metrics. Loki receives sanitized event logs in the optional profile.</p></div><div class="foundation"><strong>Trust and budget boundaries</strong><p>Session + CSRF → team-scoped retrieval → source filtering → model reservation → strict output contract → student review.</p></div>';
 $('#stack').innerHTML=[
  ['Runs locally','FastAPI · Python 3.12 · SQLite FTS5 · FFmpeg / OpenCV · LangGraph · Pydantic · OpenTelemetry · Prometheus client'],
- ['Optional connected AI','Nebius Token Factory or vLLM JSON selection. Explicit environment configuration, model, prices, and nonzero budget required.'],
+ ['Connected AI adapters','Nebius Token Factory · Fireworks AI · vLLM. Server-side keys, structured selection, reported token/cache counts, and a shared cost ledger. Published synthetic API results are in Provider lab.'],
  ['Optional infrastructure profile','Docker Compose · Collector · Grafana · Prometheus · Tempo · Loki. DCGM / vLLM exporter integrations require supported GPU infrastructure.'],
  ['Research track','NVIDIA Brev · vLLM · AIPerf · LMCache · Dynamo / NIXL · Nsight. Multi-GPU, eBPF / Kubernetes, TensorRT-LLM, and visual-embedding studies need their own measured validation.']
 ].map(x=>'<div class="foundation"><strong>'+x[0]+'</strong><p>'+x[1]+'</p></div>').join('');
@@ -111,6 +111,7 @@ async function dashboard(){
     [d.clips.reduce((n,r)=>n+r.count,0),'Saved trials'],[d.traces.length,'Recent traces · up to 15'],
     ['$'+(d.ledger.settled_usd+d.ledger.reserved_usd).toFixed(5),'Accounted + reserved estimate']
   ].map(x=>'<div class="stat"><strong>'+esc(x[0])+'</strong><span>'+esc(x[1])+'</span></div>').join('');
+  $('#inference-events').innerHTML=measurementTable(d.inference||[]);
   $('#traces').innerHTML=d.traces.map(t=>'<div class="list-row"><button data-trace="'+esc(t.trace_id)+'">'+esc(t.trace_id.slice(0,12))+'…<small>'+new Date(t.started*1000).toLocaleTimeString()+'</small></button><span>'+t.spans+' spans · '+(t.elapsed*1000).toFixed(1)+' ms</span></div>').join('')||'<p class="empty">No completed trace yet.</p>';
   $$('[data-trace]').forEach(b=>b.addEventListener('click',()=>showTrace(b.dataset.trace).catch(e=>notice(e.message,true))));
   $('#audit').innerHTML=d.audit.map(a=>'<div class="list-row"><div>'+esc(a.action)+'<small>'+esc(a.reason)+'</small></div><small>'+new Date(a.created*1000).toLocaleTimeString()+'</small></div>').join('')||'<p class="empty">No policy or lifecycle event yet.</p>';
@@ -123,6 +124,31 @@ async function showTrace(id){
   $('#trace-detail').innerHTML=rows.map(s=>'<div class="trace-row"><span>'+esc(s.name)+'</span><small>'+s.duration_ms.toFixed(1)+' ms</small><div class="trace-track"><svg class="trace-axis" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true"><rect x="'+Math.max(0,(s.started-start)/duration*100).toFixed(2)+'" y="0" width="'+Math.min(100,s.duration_ms/1000/duration*100).toFixed(2)+'" height="10" rx="0.5"></rect></svg></div></div>').join('')+'<p class="muted">Common wall-time axis. Parent and child spans overlap; do not sum their durations.</p>';
 }
 action('#dashboard-refresh',dashboard);
+const measured = (value,digits=0) => value==null?'Unknown':Number(value).toFixed(digits);
+const money = value => value==null?'Unknown':'$'+Number(value).toFixed(6);
+function measurementTable(rows){
+  if(!rows.length)return '<p class="empty">No provider calls recorded here. Provider lab contains the separate published experiment.</p>';
+  return '<table><thead><tr><th>Provider / operation</th><th>Outcome</th><th>Response ms</th><th>Input / output tokens</th><th>Cached input</th><th>Reasoning</th><th>Est. USD</th></tr></thead><tbody>'+rows.map(m=>'<tr><td>'+esc(m.provider)+'<br><span class="muted">'+esc(m.operation)+'</span></td><td>'+esc(m.outcome)+'</td><td>'+measured(m.duration_ms)+'</td><td>'+measured(m.input_tokens)+' / '+measured(m.output_tokens)+'</td><td>'+measured(m.cached_input_tokens)+'</td><td>'+measured(m.reasoning_tokens)+'</td><td>'+money(m.cost_usd)+'</td></tr>').join('')+'</tbody></table>';
+}
+let providerRuns=[];
+async function providerLab(){
+  const artifact=await api('/api/lab/provider-results');providerRuns=artifact.reports||[];
+  if(!providerRuns.length){$('#provider-comparison').innerHTML='<p class="empty">No published provider experiment yet. The command-line runner defaults to a plan.</p>';return;}
+  const calls=providerRuns.reduce((n,r)=>n+r.ledger.attempts,0)+(artifact.cache?.measurements.length||0)+(artifact.hybrid?.measurements.length||0),cost=artifact.total_accounted_usd;
+  $('#provider-summary').innerHTML=[[providerRuns.length,'Recorded model runs'],[calls,'API calls across experiments'],[money(cost),'Combined experiment estimate']].map(x=>'<div class="stat"><strong>'+esc(x[0])+'</strong><span>'+esc(x[1])+'</span></div>').join('');
+  $('#provider-date').textContent='Captured '+new Date(Math.max(...providerRuns.map(r=>r.created))*1000).toLocaleString()+'. Results are a release snapshot, separate from this workspace’s live telemetry.';
+  $('#provider-comparison').innerHTML='<table><thead><tr><th>Provider / model</th><th>Suite</th><th>Model successes</th><th>Fallbacks</th><th>Median response</th><th>Est. USD</th></tr></thead><tbody>'+providerRuns.map(r=>'<tr><td><strong>'+esc(r.provider)+'</strong><br><span class="model-name">'+esc(r.model)+'</span></td><td>'+r.passed+' / '+r.total+'</td><td>'+r.model_successes+' / '+r.max_external_selection_calls+'</td><td>'+r.fallbacks+'</td><td>'+measured(r.model_completion_p50_ms)+' ms</td><td>'+money(r.accounted_plus_reserved_usd)+'</td></tr>').join('')+'</tbody></table>';
+  $('#provider-run').innerHTML=providerRuns.map((r,i)=>'<option value="'+i+'">'+esc(r.provider+' · '+r.model)+'</option>').join('');renderProviderRun();
+  const cache=artifact.cache;
+  $('#cache-experiment').innerHTML=cache?'<table><thead><tr><th>Pair / phase</th><th>Cached input</th><th>Response</th></tr></thead><tbody>'+cache.measurements.map(m=>'<tr><td>'+m.pair+' · '+esc(m.phase)+'</td><td>'+measured(m.inference.cached_input_tokens)+'</td><td>'+measured(m.inference.completion_ms)+' ms</td></tr>').join('')+'</tbody></table><p class="muted">'+esc(cache.limitations)+'</p><p class="muted">Experiment estimate: '+money(cache.accounted_plus_reserved_usd)+'</p>':'<p class="empty">Not measured.</p>';
+  const hybrid=artifact.hybrid;
+  $('#hybrid-experiment').innerHTML=hybrid?'<div class="question-box"><strong>'+esc(hybrid.passed?'Integration passed':'Needs investigation')+'</strong><p>'+esc(hybrid.embedding_model)+' → rank fusion → '+esc(hybrid.model)+'</p><p>'+esc(hybrid.question)+'</p></div><p>Retrieval: '+esc(hybrid.strategy)+' · '+hybrid.evidence_count+' cited observation</p><p class="muted">'+esc(hybrid.limitations)+'</p><p class="muted">Experiment estimate: '+money(hybrid.ledger.settled_usd+hybrid.ledger.reserved_usd)+'</p>':'<p class="empty">Not measured.</p>';
+}
+function renderProviderRun(){
+  const r=providerRuns[Number($('#provider-run').value)];if(!r)return;
+  $('#provider-run-detail').innerHTML='<p class="muted">Suite '+esc(r.suite)+' · dataset '+esc(r.dataset_sha256.slice(0,12))+'… · output limit '+r.configured_output_limit+' · deadline '+r.configured_timeout_seconds+' s</p><div class="table-wrap spaced"><table><thead><tr><th>Case</th><th>Observed behavior</th><th>Result</th></tr></thead><tbody>'+r.cases.map(c=>'<tr><td>'+esc(c.id)+'</td><td>'+esc(c.selected_question_id||c.reason)+(c.fallback?' · local fallback':'')+'</td><td class="'+(c.passed?'pass':'fail')+'">'+(c.passed?'Pass':'Hold')+'</td></tr>').join('')+'</tbody></table></div><h3 class="spaced">Provider-reported usage</h3><div class="table-wrap">'+measurementTable(r.measurements)+'</div><p class="muted">'+esc(r.limitations)+'</p>';
+}
+$('#provider-run').addEventListener('change',renderProviderRun);
 function renderEval(r){
   $('#eval-result').className='panel';
   $('#eval-result').innerHTML='<div class="heading"><div><h3>'+esc(r.suite)+'</h3><p class="muted">'+esc(r.dataset)+'</p></div><span class="badge">'+r.passed+' / '+r.total+' · '+esc(r.release_gate)+'</span></div><div class="table-wrap"><table><thead><tr><th>Case</th><th>Expected</th><th>Observed</th><th>Result</th></tr></thead><tbody>'+r.cases.map(c=>'<tr><td>'+esc(c.name)+'</td><td>'+esc(c.expected)+'</td><td>'+esc(c.actual)+'</td><td class="'+(c.passed?'pass':'fail')+'">'+(c.passed?'Pass':'Fail')+'</td></tr>').join('')+'</tbody></table></div><p class="muted">'+esc(r.limitations)+'</p>';

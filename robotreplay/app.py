@@ -16,6 +16,7 @@ from prometheus_client import generate_latest
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from robotreplay import __version__
 from robotreplay.agent import Investigator
 from robotreplay.config import Settings
 from robotreplay.evaluations import run_evaluations
@@ -118,7 +119,7 @@ def create_app(settings=None, provider_transport=None):
 
     app = FastAPI(
         title="RobotReplay",
-        version="0.1.0",
+        version=__version__,
         lifespan=lifespan,
         docs_url=None,
         redoc_url=None,
@@ -290,7 +291,7 @@ def create_app(settings=None, provider_transport=None):
 
     @app.get("/healthz")
     def health():
-        return {"status": "ok", "version": "0.1.0"}
+        return {"status": "ok", "version": __version__}
 
     @app.get("/api/clips")
     def clips(identity=Depends(user)):
@@ -490,6 +491,12 @@ def create_app(settings=None, provider_transport=None):
                 "collector_health": "not_verified",
             },
             "provider": settings.provider,
+            "inference": store.rows(
+                "SELECT created,provider,operation,outcome,duration_ms,input_tokens,output_tokens,"
+                "cached_input_tokens,reasoning_tokens,cost_usd,cost_basis FROM inference_events "
+                "WHERE team=? ORDER BY id DESC LIMIT 20",
+                (team,),
+            ),
         }
 
     @app.get("/api/traces/{trace}")
@@ -550,6 +557,14 @@ def create_app(settings=None, provider_transport=None):
     @app.get("/api/lab/gpu")
     def gpu(identity=Depends(user)):
         return gpu_snapshot()
+
+    @app.get("/api/lab/provider-results")
+    def provider_results(identity=Depends(user)):
+        # Reviewed synthetic release artifact only. This endpoint never starts an API experiment.
+        artifact = Path(__file__).parent / "data" / "provider-results.json"
+        if not artifact.exists():
+            return {"kind": "published_snapshot", "reports": []}
+        return json.loads(artifact.read_text())
 
     app.mount("/static", StaticFiles(directory=STATIC), name="static")
 

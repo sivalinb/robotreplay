@@ -42,7 +42,7 @@ def context_plan(plan):
         "kv_gib": memory / 2**30,
         "assumptions": "Analytical estimate for full-attention KV state only. Excludes model weights, "
         "runtime buffers, block rounding, quantization scales, sliding windows and "
-        "architecture-specific compression. Actual model and kernels must support the dtype.",
+        "architecture-specific compression or Mamba state. Actual model and kernels must support the dtype.",
     }
 
 

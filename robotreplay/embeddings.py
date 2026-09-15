@@ -1,11 +1,13 @@
 import asyncio
 import json
 import math
+import time
+from urllib.parse import urlparse
 
 import httpx
 
 from robotreplay.policy import input_policy, redact
-from robotreplay.provider import ModelUnavailable
+from robotreplay.provider import ModelUnavailable, token_count
 from robotreplay.retrieval import reciprocal_rank_fusion
 
 
@@ -15,6 +17,10 @@ async def hybrid_retrieve(provider, team, clip_ids, question, lexical):
         raise ModelUnavailable("embeddings_unconfigured")
     if settings.embedding_usd_per_million <= 0:
         raise ModelUnavailable("embedding_pricing_unconfigured")
+    try:
+        api_key = settings.embedding_key()
+    except ValueError:
+        raise ModelUnavailable("embedding_credentials_unavailable") from None
     # No persistent cross-team embedding cache; deleting evidence removes future candidates.
     candidates = [
         e
@@ -35,6 +41,12 @@ async def hybrid_retrieve(provider, team, clip_ids, question, lexical):
     reservation = store.reserve(team, estimate, settings.model_budget_usd)
     if not reservation:
         raise ModelUnavailable("budget_ceiling")
+    started, outcome, charge, http_status = time.perf_counter(), "failed", None, None
+    usage = {"input_tokens": None, "output_tokens": None}
+    host = urlparse(settings.embedding_base_url).hostname
+    vendor = {"api.tokenfactory.nebius.com": "nebius", "api.fireworks.ai": "fireworks"}.get(
+        host, "custom"
+    )
     with provider.telemetry.span("retrieval.embed_and_fuse", team):
         try:
             async with asyncio.timeout(settings.model_timeout):
@@ -44,9 +56,10 @@ async def hybrid_retrieve(provider, team, clip_ids, question, lexical):
                     async with client.stream(
                         "POST",
                         settings.embedding_base_url.rstrip("/") + "/embeddings",
-                        headers={"Authorization": "Bearer " + settings.embedding_api_key},
+                        headers={"Authorization": "Bearer " + api_key} if api_key else {},
                         json={"model": settings.embedding_model, "input": inputs},
                     ) as response:
+                        http_status = response.status_code
                         response.raise_for_status()
                         raw = bytearray()
                         async for chunk in response.aiter_bytes():
@@ -56,6 +69,14 @@ async def hybrid_retrieve(provider, team, clip_ids, question, lexical):
                         body = json.loads(raw)
             if not isinstance(body, dict):
                 raise ValueError("invalid_response_object")
+            raw_usage = body.get("usage", {})
+            tokens = (
+                token_count(raw_usage.get("prompt_tokens")) if isinstance(raw_usage, dict) else None
+            )
+            if tokens is not None:
+                charge = tokens * settings.embedding_usd_per_million / 1e6
+                usage = {"input_tokens": tokens, "output_tokens": 0}
+                store.settle(reservation, charge, tokens, 0)
             records = body["data"]
             if not isinstance(records, list) or len(records) != len(inputs):
                 raise ValueError("embedding_count")
@@ -83,12 +104,20 @@ async def hybrid_retrieve(provider, team, clip_ids, question, lexical):
                 [e["id"] for e in lexical], [candidates[i - 1]["id"] for i in semantic]
             )
             by_id = {e["id"]: e for e in [*lexical, *candidates]}
-            usage = body.get("usage", {})
-            tokens = usage.get("prompt_tokens") if isinstance(usage, dict) else None
-            if type(tokens) is int and 0 <= tokens < 1_000_000:
-                store.settle(
-                    reservation, tokens * settings.embedding_usd_per_million / 1e6, tokens, 0
-                )
+            outcome = "valid"
             return [by_id[eid] for eid in fused]
         except (httpx.HTTPError, TimeoutError, ValueError, KeyError, TypeError, OverflowError):
+            outcome = "embedding_unavailable"
             raise ModelUnavailable("embedding_unavailable") from None
+        finally:
+            provider.telemetry.record_model(
+                team,
+                vendor,
+                "embedding",
+                outcome,
+                (time.perf_counter() - started) * 1000,
+                usage,
+                charge,
+                "configured_token_prices",
+                http_status,
+            )

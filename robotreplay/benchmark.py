@@ -12,7 +12,7 @@ from pathlib import Path
 
 import httpx
 
-from robotreplay.config import Settings
+from robotreplay.config import Settings, read_key
 
 PROMPT_PREFIX = (
     "You are a robotics teaching assistant. Ask one short experiment question. "
@@ -25,7 +25,8 @@ def percentile(values, quantile):
     if not values:
         return None
     ordered = sorted(values)
-    return ordered[min(len(ordered) - 1, max(0, int((len(ordered) - 1) * quantile)))]
+    # Nearest-rank convention; for a small sample, p95 is usually the maximum.
+    return ordered[min(len(ordered) - 1, max(0, math.ceil(len(ordered) * quantile) - 1))]
 
 
 async def stream_request(client, base_url, model, api_key, prompt, max_tokens, timeout):
@@ -109,6 +110,7 @@ async def benchmark(args):
     ):
         raise ValueError("Latency targets must be finite and positive")
     Settings(model_base_url=args.base_url).validate()
+    api_key = read_key(os.getenv("RR_MODEL_API_KEY", ""), os.getenv("RR_MODEL_API_KEY_FILE", ""))
     prompt = PROMPT_PREFIX * args.prefix_repeats
     upper_tokens = len(prompt.encode()) + 1024
     token_ceiling = (
@@ -131,7 +133,7 @@ async def benchmark(args):
                     client,
                     args.base_url,
                     args.model,
-                    os.getenv("RR_MODEL_API_KEY", ""),
+                    api_key,
                     prompt + f"\nQuestion {index}: what should we compare?",
                     args.max_tokens,
                     min(60, args.max_seconds),

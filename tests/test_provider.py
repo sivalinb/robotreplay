@@ -97,7 +97,7 @@ def test_budget_and_context_reject_before_network(model_settings):
     assert result["reason"] == "context_limit"
 
 
-@pytest.mark.parametrize("payload", [[], {"usage": [], "choices": []}])
+@pytest.mark.parametrize("payload", [[], {"usage": [], "choices": []}, {"choices": ["invalid"]}])
 def test_malformed_provider_objects_fall_back_without_losing_reservation(model_settings, payload):
     result, store, _ = run_case(model_settings, lambda request: httpx.Response(200, json=payload))
     assert result["reason"] == "invalid_provider_response"

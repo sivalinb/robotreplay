@@ -37,6 +37,7 @@ def test_streaming_measurements_do_not_invent_token_counts():
 
     asyncio.run(measure())
     assert percentile([], 0.95) is None
+    assert percentile([1, 2, 3], 0.95) == 3
 
 
 def test_benchmark_deadline_preserves_completed_measurements(monkeypatch):

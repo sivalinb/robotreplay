@@ -48,11 +48,12 @@ The initializer asks for a new password without echoing it. Sign in as that ment
 | Computer vision | OpenCV green-marker baseline with measured coordinates, direction-change candidates, low-motion candidates, and visibility gaps. Verified on original procedural drills; general VEX match accuracy is **not established**. |
 | Persistence | SQLite WAL, durable single-worker jobs, restart recovery, source hashes, permission records, evidence and FTS5 indexes. |
 | Bounded agents | A fixed LangGraph investigation with scoped evidence retrieval, trial comparison, and a versioned teaching-concept lookup. No shell, actuator, write, or export tool is exposed to a model. |
-| RAG | SQLite lexical search and chronological fallback. Optional embedding endpoint plus reciprocal-rank fusion; remote protocol tested with a local transport double. No paid embedding request has been run. |
-| Model integration | Nebius Token Factory or a vLLM-compatible endpoint selects approved teaching prompts and real evidence IDs. Strict JSON validation, total deadline, no automatic retry, local fallback, and cost reservations. Protocol/failure tests use local transport doubles. |
+| RAG | SQLite lexical search plus optional embeddings and reciprocal-rank fusion. Live Nebius Qwen3-Embedding-8B → hybrid retrieval → model selection verified on one synthetic case. Retrieval quality still needs a labeled dataset. |
+| Model integration | Nebius, Fireworks, or vLLM selects approved teaching prompts and real evidence IDs. Server-side key files, provider URL checks, strict JSON, deadline, no retry, explicit fallback and a shared cost ledger. Four hosted model/provider combinations passed the versioned synthetic suite. |
 | NeMo | An actual NeMo Guardrails input rail, tested without a generation model or model download. Enable with RR_NEMO_ENABLED=true. Authorization and output validity remain application checks. |
 | Observability | Real OpenTelemetry spans persisted locally, an authenticated dashboard, sanitized lifecycle logs, bounded Prometheus metrics, and optional OTLP export. |
-| Infrastructure | Non-root Docker app, optional Grafana/Prometheus/Tempo/Loki/Collector profile, 16-panel dashboard and alerts. Full generated-media, trace, log and scrape smoke test passed in Linux CI; see the validation record. |
+| Infrastructure | Non-root Docker app, optional Grafana/Prometheus/Tempo/Loki/Collector profile, 22-panel dashboard and alerts. Full generated-media, trace, log and scrape smoke test runs in Linux CI; see the validation record. |
+| Provider experiments | A plan-first CLI evaluation runner, paired Fireworks cache experiment, and inspectable published results. Actual cache/usage fields remain unknown when absent; no latency-based cache inference. |
 | GPU experiments | A single-GPU vLLM Compose profile, real SSE benchmark runner, local GPU query, and an analytical KV-memory planner. **No GPU performance measurements are claimed.** |
 | Distributed serving | Illustrated Dynamo/NIXL/offload/routing designs and an experiment plan. Multi-GPU disaggregation, production KV offload, Kubernetes/eBPF, and vendor-specific optimization studies are follow-on research, not deployed features. |
 
@@ -71,7 +72,7 @@ flowchart TD
   G --> R["Input policy<br/>Optional NeMo rail"]
   R --> M{"Reasoning route"}
   M --> L["Local teaching templates"]
-  M --> N["Optional Nebius API<br/>Text evidence only"]
+  M --> N["Nebius / Fireworks API<br/>Text evidence only · scoped cache"]
   M --> B["Optional Brev GPU / vLLM<br/>Prefill → KV cache → decode"]
   L --> O["Pydantic output contract<br/>Allowed question + evidence IDs"]
   N --> O
@@ -84,13 +85,15 @@ flowchart TD
   B -.-> H["vLLM metrics · DCGM / nvidia-smi"]
 ~~~
 
-See [architecture and boundaries](docs/architecture.md), [GPU experiment plan](docs/gpu-lab.md), [observability](docs/observability.md), and [validation record](docs/validation.md).
+See [provider lab and measured results](docs/provider-lab.md), [architecture and boundaries](docs/architecture.md), [GPU experiment plan](docs/gpu-lab.md), [observability](docs/observability.md), and [validation record](docs/validation.md).
 
 ## Optional model configuration
 
 .env.example documents the settings. The Python CLI reads **environment variables**; it does not silently load a file. Export only the variables you intend to use, or use your process manager's environment-file support. Compose reads .env through its explicit env_file.
 
 For Nebius, configure RR_PROVIDER=nebius, RR_MODEL, RR_MODEL_API_KEY, verified input/output prices per million tokens, and a positive RR_MODEL_BUDGET_USD. The base URL defaults to the [Token Factory endpoint](https://docs.tokenfactory.nebius.com/api-reference/introduction).
+
+Fireworks uses RR_PROVIDER=fireworks and a full accounts/.../models/... ID. Leave RR_MODEL_BASE_URL empty to select the correct provider endpoint. Either adapter can use RR_MODEL_API_KEY_FILE instead of an inline key; embeddings have a separate RR_EMBEDDING_API_KEY_FILE. The [provider guide](docs/provider-lab.md) includes reproducible commands, current-run prices, cache accounting and visibility limits.
 
 For self-hosted vLLM, configure RR_PROVIDER=vllm, the endpoint/model, RR_GPU_HOURLY_RATE, and a positive request budget. Its ledger apportions **request wall-time at the configured rate**; it does not represent the entire GPU bill. Idle time, startup, storage, and the rest of a Brev instance's lifetime need their own ledger.
 

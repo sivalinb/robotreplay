@@ -8,7 +8,7 @@
 </head>
 <body>
 <div class="app">
-  <header><div class="brand"><span class="mark" aria-hidden="true">R↺</span><div><h1>RobotReplay</h1><p>Observe. Compare. Let students decide.</p></div></div><div class="row"><span class="badge">Python · v0.1</span><span id="account"></span><button id="logout" hidden>Sign out</button></div></header>
+  <header><div class="brand"><span class="mark" aria-hidden="true">R↺</span><div><h1>RobotReplay</h1><p>Observe. Compare. Let students decide.</p></div></div><div class="row"><span class="badge">Python · v0.2</span><span id="account"></span><button id="logout" hidden>Sign out</button></div></header>
   <div class="banner"><strong>Evidence before inference</strong><span id="runtime">Local practice review · no automatic GPU provisioning</span></div>
   <div id="notice" role="status" aria-live="polite" hidden></div>
   <section id="login-view" class="login">
@@ -19,6 +19,7 @@
       <button data-view="review" aria-pressed="true">Replay lab</button>
       <button data-view="architecture" aria-pressed="false">Architecture &amp; stack</button>
       <button data-view="lab" aria-pressed="false">Inference lab</button>
+      <button data-view="providers" aria-pressed="false">Provider lab</button>
       <button data-view="observe" aria-pressed="false">Observability</button>
       <button data-view="evals" aria-pressed="false">Evaluations</button>
       <button data-view="safety" aria-pressed="false">Safety lab</button>
@@ -51,8 +52,17 @@
       <section data-page="observe" hidden>
         <div class="heading"><div><div class="eyebrow">Live local measurements</div><h2>See the complete request.</h2><p>Actual spans, analysis outcomes, policy events, and token-cost reservations.</p></div><button id="dashboard-refresh">Refresh telemetry</button></div>
         <div id="dashboard-metrics" class="stats"></div>
+        <section class="panel spaced"><h3>Model calls in this workspace</h3><p class="muted">Recent persisted calls from your team. Reasoning and cached tokens are subsets of output and input; unknown is different from zero.</p><div id="inference-events" class="table-wrap"></div></section>
         <div class="grid"><section class="panel"><h3>Recent traces</h3><div id="traces"></div></section><section class="panel"><h3>Trace detail</h3><div id="trace-detail" class="empty">Select a trace.</div></section></div>
         <div class="grid spaced"><section class="panel"><h3>Policy &amp; lifecycle events</h3><div id="audit"></div></section><section class="panel"><h3>Visibility boundaries</h3><div id="visibility"></div><p class="muted">Prometheus stores bounded route and outcome labels. Trace IDs stay in traces. Video, prompts, credentials, and child names do not enter telemetry.</p><p class="muted">The optional Compose profile provides Grafana, Prometheus, Tempo, Loki, and an OpenTelemetry Collector. Collector freshness requires its own health signals.</p></section></div>
+      </section>
+      <section data-page="providers" hidden>
+        <div class="heading"><div><div class="eyebrow">Recorded experiment / inspectable evidence</div><h2>Choose the model with evidence.</h2><p>Run the same teaching tasks through different providers. Inspect correctness, failures, response time, and token cost together.</p></div><span class="badge">Published results · no API call on this page</span></div>
+        <div id="provider-summary" class="stats"></div>
+        <section class="panel"><h3>Model comparison</h3><p class="muted" id="provider-date"></p><div id="provider-comparison" class="table-wrap"></div><p class="muted">Each run has three model-selection tasks and five local policy or abstention checks. A successful local fallback never counts as a successful model call. This small sample is not a general model ranking.</p></section>
+        <section class="panel spaced"><h3>Inspect a run</h3><label for="provider-run">Recorded model</label><select id="provider-run"></select><div id="provider-run-detail"></div></section>
+        <div class="grid spaced"><section class="panel"><h3>Does repeating a prompt reuse work?</h3><p class="muted">Fireworks GPT-OSS · fresh isolation scope for each pair, followed by the exact same request.</p><div id="cache-experiment" class="table-wrap"></div></section><section class="panel"><h3>Hybrid retrieval through Nebius</h3><p class="muted">One synthetic check through the complete retrieval and teaching workflow.</p><div id="hybrid-experiment"></div></section></div>
+        <div class="grid spaced"><section class="panel"><h3>What these credits can teach</h3><div class="foundation"><strong>Nebius Token Factory</strong><p>NVIDIA Nemotron and other hosted models, embedding retrieval, structured outputs, and cost-quality comparisons.</p></div><div class="foundation"><strong>Fireworks AI</strong><p>Hosted model comparisons, structured outputs, team-isolated prompt caching, and provider usage exports.</p></div><div class="foundation"><strong>NVIDIA Brev</strong><p>A later single-GPU experiment: vLLM, prefill and decode, KV occupancy, DCGM, and AIPerf. GPU time has a separate budget.</p></div></section><section class="panel"><h3>Know what the numbers mean</h3><ul><li><strong>Response time:</strong> measured from this client; includes network and provider work.</li><li><strong>Cached input:</strong> counted only when the provider reports it. A faster response alone does not prove a cache hit.</li><li><strong>Cost:</strong> reported tokens × configured prices. Provider invoices and credit adjustments can differ.</li><li><strong>GPU internals:</strong> device utilization, kernel profiles, and separate prefill/decode times need an appropriate exporter or owned serving setup.</li></ul></section></div>
       </section>
       <section data-page="evals" hidden>
         <div class="heading"><div><div class="eyebrow">Regression checks / inspectable results</div><h2>Faster is useful only when the evidence holds.</h2><p>Run the real local policy and output-contract suite. Results are saved with the suite version.</p></div><button id="run-evals" class="primary">Run evaluations</button></div><div id="eval-result" class="panel empty">No evaluation report loaded.</div><section class="panel spaced"><h3>What a release still needs</h3><p>Whole-session held-out video, mentor labels, event precision/recall, timestamp error, useful abstention, false-refusal checks, and student/mentor feedback. Synthetic policy tests do not establish real-world vision accuracy or learning impact.</p></section>
