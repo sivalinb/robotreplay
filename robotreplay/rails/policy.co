@@ -1,0 +1,8 @@
+define bot robotreplay blocked
+  "RR_INPUT_BLOCKED"
+
+define flow robotreplay input gate
+  $allowed = execute robotreplay_input_allowed
+  if not $allowed
+    bot robotreplay blocked
+    stop

@@ -1,0 +1,6 @@
+colang_version: "1.0"
+models: []
+rails:
+  input:
+    flows:
+      - robotreplay input gate

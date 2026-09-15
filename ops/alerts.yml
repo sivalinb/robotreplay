@@ -1,0 +1,17 @@
+groups:
+  - name: robotreplay
+    rules:
+      - alert: RobotReplayUnavailable
+        expr: up{job="robotreplay"} == 0
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: "RobotReplay scrape is unavailable; do not treat missing metrics as zero."}
+      - alert: AnalysisFailures
+        expr: increase(rr_jobs_total{outcome="failed"}[10m]) > 0
+        labels: {severity: warning}
+        annotations: {summary: "Video analysis failed; inspect sanitized lifecycle events."}
+      - alert: CollectorExporterFailures
+        expr: rate(otelcol_exporter_send_failed_spans_total[5m]) > 0
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: "Trace export is losing or retrying data."}

@@ -1,0 +1,10 @@
+[
+  {
+    "id": "fair-comparison-v1",
+    "title": "A fair comparison",
+    "text": "Change one variable, keep the setup consistent, and compare directly visible evidence.",
+    "source": "Original RobotReplay teaching prompt",
+    "revision": 1,
+    "review_status": "Project-authored; mentor review required for a real team pilot"
+  }
+]

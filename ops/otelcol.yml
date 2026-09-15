@@ -1,0 +1,52 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+  filelog:
+    include: ["/var/lib/robotreplay/events.jsonl"]
+    start_at: beginning
+    operators:
+      - type: json_parser
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 128
+  resource:
+    attributes:
+      - {key: service.name, value: robotreplay, action: upsert}
+  transform/privacy:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - delete_key(attributes, "rr.team")
+  batch: {}
+exporters:
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls: {insecure: true}
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+service:
+  extensions: [health_check]
+  telemetry:
+    metrics:
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: 0.0.0.0
+                port: 8888
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, transform/privacy, resource, batch]
+      exporters: [otlp/tempo]
+    logs:
+      receivers: [filelog]
+      processors: [memory_limiter, resource, batch]
+      exporters: [otlphttp/loki]

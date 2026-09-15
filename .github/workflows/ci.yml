@@ -1,0 +1,35 @@
+name: Python checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12", cache: pip}
+      - run: python -m pip install -r requirements.lock && python -m pip install --no-deps -e .
+      - run: python -m ruff check .
+      - run: python -m pytest --junitxml=artifacts/tests.xml
+        env:
+          HF_HUB_OFFLINE: "1"
+      - run: python -m robotreplay evaluate
+      - run: python -m pip_audit --disable-pip --no-deps -r requirements.lock
+      - run: docker compose config --quiet
+      - run: docker build -t robotreplay:ci .
+      - name: Start disposable observability stack
+        run: |
+          echo 'RR_OTLP_ENDPOINT=http://otelcol:4318/v1/traces' > .env
+          docker compose --profile observability up -d --build
+          docker compose exec -T app python -c "from pathlib import Path; from robotreplay.store import Store, create_user; create_user(Store(Path('/var/lib/robotreplay')), 'ci-mentor', 'ci-only-generated-media')"
+      - run: python ops/smoke.py
+      - name: Capture infrastructure diagnostics
+        if: always()
+        run: |
+          mkdir -p artifacts
+          docker compose --profile observability logs --no-color > artifacts/compose.log
+          docker compose --profile observability down -v
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: validation, path: artifacts/}

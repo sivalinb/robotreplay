@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>RobotReplay · Evidence before inference</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+<div class="app">
+  <header><div class="brand"><span class="mark" aria-hidden="true">R↺</span><div><h1>RobotReplay</h1><p>Observe. Compare. Let students decide.</p></div></div><div class="row"><span class="badge">Python · v0.1</span><span id="account"></span><button id="logout" hidden>Sign out</button></div></header>
+  <div class="banner"><strong>Evidence before inference</strong><span id="runtime">Local practice review · no automatic GPU provisioning</span></div>
+  <div id="notice" role="status" aria-live="polite" hidden></div>
+  <section id="login-view" class="login">
+    <div class="panel"><div class="eyebrow">Your practice workspace</div><h2>Turn a recording into a better question.</h2><p>Review visible events, compare trials, and keep the students in charge of the next experiment.</p><form id="login-form"><label>Username<input name="username" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button class="primary" type="submit">Open workspace</button></form><p class="muted">Use the account created by <code>robotreplay init</code>. In explicit sample mode only: <code>demo / robotreplay-demo</code>.</p></div>
+  </section>
+  <div id="workspace" hidden>
+    <nav aria-label="Workspace views">
+      <button data-view="review" aria-pressed="true">Replay lab</button>
+      <button data-view="architecture" aria-pressed="false">Architecture &amp; stack</button>
+      <button data-view="lab" aria-pressed="false">Inference lab</button>
+      <button data-view="observe" aria-pressed="false">Observability</button>
+      <button data-view="evals" aria-pressed="false">Evaluations</button>
+      <button data-view="safety" aria-pressed="false">Safety lab</button>
+    </nav>
+    <main>
+      <section data-page="review">
+        <div class="heading"><div><div class="eyebrow">Practice / evidence / next experiment</div><h2>Watch what happened. Decide what to test.</h2><p>Actual video processing and saved observations. Green-marker tracking is a controlled-drill baseline.</p></div><button id="refresh">Refresh trials</button></div>
+        <div class="grid">
+          <section class="panel"><h3>Start a practice review</h3><p class="muted">No footage yet? Generate an original 12-second practice clip and analyze its pixels.</p><div class="row"><button id="demo-clear" class="primary">Analyze a clear sample</button><button id="demo-hidden">Analyze an obscured sample</button></div>
+            <details id="upload-details"><summary>Import your own permitted recording</summary><form id="upload-form"><label>Trial label<input name="title" maxlength="100" required placeholder="Practice 01 · left turn"></label><label>Recording<input name="file" type="file" accept="video/*" required></label><label>Permission record<select name="permission" required><option value="">Choose the basis for use</option><option value="own_recording">My own recording, with team consent</option><option value="written_permission">I have written permission</option><option value="compatible_license">A compatible reuse license</option></select></label><label>Source / permission reference<input name="source" maxlength="500" required placeholder="Team practice · permission recorded locally"></label><button type="submit">Import and analyze</button></form><p class="muted">Up to 64 MiB / 180 seconds. Audio is removed from playback. Only original generated media is accepted in sample mode.</p></details>
+          </section>
+          <section class="panel"><h3>Saved trials</h3><div id="trials" class="empty">Loading your workspace…</div></section>
+        </div>
+        <div id="trial-workspace" hidden>
+          <div class="heading spaced"><div><div class="eyebrow" id="trial-state"></div><h2 id="trial-title"></h2></div><button id="delete-clip" class="danger">Delete this trial</button></div>
+          <div class="grid wide-left"><section class="panel"><video id="video" controls playsinline preload="metadata"></video><div class="row between"><span id="play-time">00:00</span><span id="coverage" class="badge"></span></div><p class="muted">A unique green marker must belong to the robot. Occlusion or multiple markers means unknown; no game score or cause is inferred.</p><p class="muted">Measured path in image coordinates · missing intervals are omitted.</p><canvas id="trajectory" height="180" aria-label="Measured marker trajectory; gaps have no inferred path"></canvas><div id="clip-metadata" class="muted"></div></section><section class="panel"><h3>Evidence timeline</h3><div id="evidence"></div><form id="annotation-form"><label>Checked observation at the current video time<input name="text" maxlength="400" required placeholder="What is directly visible?"></label><button type="submit">Save observation</button></form><details><summary>Align a VEXcode console log</summary><form id="console-form"><label>Student diagnostic lines<textarea name="text" rows="4" required placeholder="RR|4200|turn command started"></textarea></label><div class="grid"><label>Video offset · seconds<input name="offset" type="number" step="0.1" value="0"></label><label>Alignment uncertainty · seconds<input name="uncertainty" type="number" step="0.1" min="0" value="0.3"></label></div><button type="submit">Import console evidence</button></form><p class="muted">Use the documented print format and a visible synchronization event. This is a text-file adapter, not a direct robot connection.</p></details></section></div>
+          <section class="panel spaced"><div class="heading"><div><h3>Investigate the evidence</h3><p>Read-only tools choose a teaching prompt and verified evidence IDs. Students write their own conclusions.</p></div><span id="provider-badge" class="badge"></span></div><form id="question-form"><div class="grid wide-left"><label>Your question<input name="question" maxlength="1200" value="What can we compare about this turn?" required></label><label>Compare with<select id="comparison"><option value="">This trial only</option></select></label></div><label>Retrieval method<select id="retrieval-mode"><option value="lexical">SQLite keyword baseline</option><option value="hybrid">Hybrid embeddings + rank fusion · requires configuration</option></select></label><button class="primary" type="submit">Ask from evidence</button></form><div id="answer" aria-live="polite"></div></section>
+        </div>
+      </section>
+      <section data-page="architecture" hidden>
+        <div class="heading"><div><div class="eyebrow">System map / implementation status</div><h2>Follow data, trust, and cost through the product.</h2><p>Every component has a purpose, a signal, and a boundary.</p></div></div>
+        <div id="architecture"></div>
+        <section class="panel spaced"><h3>Infrastructure tracks</h3><div id="stack" class="grid"></div></section>
+      </section>
+      <section data-page="lab" hidden>
+        <div class="heading"><div><div class="eyebrow">Measure / compare / explain</div><h2>Understand the AI engine.</h2><p>Capacity estimates are labeled. Hardware and benchmark numbers appear only when measured.</p></div></div>
+        <div class="grid"><section class="panel"><h3>Context &amp; KV memory planner</h3><p class="muted">Prefill reads input. Decode generates output. KV cache stores attention state.</p><form id="context-form"><div class="grid"><label>Input tokens<input name="input_tokens" type="number" min="1" max="1000000" value="2048"></label><label>Output reserve<input name="output_tokens" type="number" min="1" max="100000" value="256"></label><label>Native context limit<input name="context_limit" type="number" min="1" max="2000000" value="8192"></label><label>Active sequences<input name="sequences" type="number" min="1" max="1000" value="1"></label><label>Model layers<input name="layers" type="number" min="1" max="256" value="32"></label><label>KV heads<input name="kv_heads" type="number" min="1" max="256" value="8"></label><label>Head dimension<input name="head_dim" type="number" min="1" max="1024" value="128"></label><label>KV dtype<select name="dtype"><option value="fp16">FP16 / BF16 · 2 bytes</option><option value="fp8">FP8 · 1 byte</option></select></label></div><button type="submit">Calculate capacity</button></form><div id="context-result" aria-live="polite"></div></section><section class="panel"><h3>Connected GPU</h3><div id="gpu-result" class="empty">No hardware reading yet.</div><button id="gpu-refresh">Check local GPU telemetry</button><h3 class="spaced">Serving topology</h3><label>Explore<select id="topology"><option value="single">Single GPU · first experiment</option><option value="offload">GPU ↔ CPU KV offload</option><option value="disagg">Separate prefill / decode workers</option><option value="routing">Cache-aware replica routing</option></select></label><div id="topology-diagram"></div><p class="muted">Diagrams explain deployment options; choosing a view does not launch resources.</p></section></div>
+        <section class="panel spaced"><h3>Experiment evidence</h3><p>Use the Python benchmark runner against a configured endpoint, or NVIDIA AIPerf for tokenizer-aware serving metrics. Compare identical prompts, output limits, model revisions, and GPU counts.</p><div class="chips"><span>Cold / warm prefix</span><span>Chunked prefill</span><span>Continuous batching</span><span>Weight vs KV quantization</span><span>Long-context quality</span><span>GPU / CPU / network profiles</span></div><p class="muted">The $20 plan is a baseline and one measured comparison. Disaggregation and multi-replica routing require additional resources; two processes on one GPU are not a two-GPU benchmark.</p></section>
+      </section>
+      <section data-page="observe" hidden>
+        <div class="heading"><div><div class="eyebrow">Live local measurements</div><h2>See the complete request.</h2><p>Actual spans, analysis outcomes, policy events, and token-cost reservations.</p></div><button id="dashboard-refresh">Refresh telemetry</button></div>
+        <div id="dashboard-metrics" class="stats"></div>
+        <div class="grid"><section class="panel"><h3>Recent traces</h3><div id="traces"></div></section><section class="panel"><h3>Trace detail</h3><div id="trace-detail" class="empty">Select a trace.</div></section></div>
+        <div class="grid spaced"><section class="panel"><h3>Policy &amp; lifecycle events</h3><div id="audit"></div></section><section class="panel"><h3>Visibility boundaries</h3><div id="visibility"></div><p class="muted">Prometheus stores bounded route and outcome labels. Trace IDs stay in traces. Video, prompts, credentials, and child names do not enter telemetry.</p><p class="muted">The optional Compose profile provides Grafana, Prometheus, Tempo, Loki, and an OpenTelemetry Collector. Collector freshness requires its own health signals.</p></section></div>
+      </section>
+      <section data-page="evals" hidden>
+        <div class="heading"><div><div class="eyebrow">Regression checks / inspectable results</div><h2>Faster is useful only when the evidence holds.</h2><p>Run the real local policy and output-contract suite. Results are saved with the suite version.</p></div><button id="run-evals" class="primary">Run evaluations</button></div><div id="eval-result" class="panel empty">No evaluation report loaded.</div><section class="panel spaced"><h3>What a release still needs</h3><p>Whole-session held-out video, mentor labels, event precision/recall, timestamp error, useful abstention, false-refusal checks, and student/mentor feedback. Synthetic policy tests do not establish real-world vision accuracy or learning impact.</p></section>
+      </section>
+      <section data-page="safety" hidden>
+        <div class="heading"><div><div class="eyebrow">Defense in depth</div><h2>Make boundaries visible.</h2><p>Exercise the actual policy checker; authentication, team scoping, and output validation are enforced independently.</p></div></div>
+        <div class="grid"><section class="panel"><form id="policy-form"><label>Scenario<select id="safety-preset"><option value="evidence">Evidence question</option><option value="notebook">Write my notebook</option><option value="injection">Caption injection</option><option value="secret">Secret request</option><option value="markup">Executable output</option></select></label><label>Input<textarea id="policy-text" name="text" rows="5" maxlength="400"></textarea></label><button type="submit">Check application policy</button></form><div id="policy-result" aria-live="polite"></div></section><section class="panel"><h3>Enforced boundaries</h3><ul><li>Hashed passwords and session tokens; HttpOnly cookies; CSRF and origin checks.</li><li>Team-scoped video, observations, retrieval, reports, and traces.</li><li>Permission records, upload limits, bounded video worker, and deletion of source plus derivatives.</li><li>Read-only graph with no shell, robot control, or bulk-export tool.</li><li>Strict model output: approved question IDs and existing evidence IDs.</li><li>Deadlines, no automatic provider retry, conservative budget reservations.</li></ul><p class="muted">NeMo Guardrails is an optional extra input rail. Keyword rules are a limited baseline; semantic jailbreak resistance needs broader evaluation. Shared hosting also needs TLS and deployment review.</p></section></div>
+      </section>
+    </main>
+  </div>
+  <footer><span>Independent educational project · students own their conclusions</span><span>Local evidence · explicit experiments · measurable progress</span></footer>
+</div>
+</body>
+</html>
