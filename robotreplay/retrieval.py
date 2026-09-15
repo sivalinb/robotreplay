@@ -2,9 +2,19 @@ import re
 
 from robotreplay.policy import input_policy
 
+STOP_WORDS = frozenset(
+    "a an the this that these those is are was were be been it its "
+    "what which how why can could should would do did we our you your "
+    "and or of to for from in on with about compare".split()
+)
+
 
 def retrieve(store, team, clip_ids, query, limit=6):
-    words = list(dict.fromkeys(re.findall(r"\w+", query.lower(), flags=re.UNICODE)))[:20]
+    words = [
+        word
+        for word in dict.fromkeys(re.findall(r"\w+", query.lower(), flags=re.UNICODE))
+        if word not in STOP_WORDS
+    ][:20]
     marks = ",".join("?" for _ in clip_ids)
     rows = []
     if words and clip_ids:

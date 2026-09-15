@@ -1,5 +1,7 @@
 # RobotReplay
 
+[![Python checks](https://github.com/sivalinb/robotreplay/actions/workflows/ci.yml/badge.svg)](https://github.com/sivalinb/robotreplay/actions/workflows/ci.yml)
+
 **Turn robotics practice into evidence students can inspect.**
 
 RobotReplay is a Python application for reviewing short practice recordings, comparing visible events, and asking better experiment questions. It connects a useful mentor workflow to hands-on work in observability, bounded agents, RAG, evaluation, and GPU inference.
@@ -50,7 +52,7 @@ The initializer asks for a new password without echoing it. Sign in as that ment
 | Model integration | Nebius Token Factory or a vLLM-compatible endpoint selects approved teaching prompts and real evidence IDs. Strict JSON validation, total deadline, no automatic retry, local fallback, and cost reservations. Protocol/failure tests use local transport doubles. |
 | NeMo | An actual NeMo Guardrails input rail, tested without a generation model or model download. Enable with RR_NEMO_ENABLED=true. Authorization and output validity remain application checks. |
 | Observability | Real OpenTelemetry spans persisted locally, an authenticated dashboard, sanitized lifecycle logs, bounded Prometheus metrics, and optional OTLP export. |
-| Infrastructure | Dockerfile, optional Grafana/Prometheus/Tempo/Loki/Collector profile, provisioned dashboard and alerts. Consult the validation record before assuming a profile was exercised on your hardware. |
+| Infrastructure | Non-root Docker app, optional Grafana/Prometheus/Tempo/Loki/Collector profile, 16-panel dashboard and alerts. Full generated-media, trace, log and scrape smoke test passed in Linux CI; see the validation record. |
 | GPU experiments | A single-GPU vLLM Compose profile, real SSE benchmark runner, local GPU query, and an analytical KV-memory planner. **No GPU performance measurements are claimed.** |
 | Distributed serving | Illustrated Dynamo/NIXL/offload/routing designs and an experiment plan. Multi-GPU disaggregation, production KV offload, Kubernetes/eBPF, and vendor-specific optimization studies are follow-on research, not deployed features. |
 

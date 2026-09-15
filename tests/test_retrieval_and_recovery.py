@@ -92,3 +92,32 @@ def test_worker_restart_recovers_and_claims_once(settings):
         assert store.one("SELECT attempts FROM jobs")["attempts"] == 2
     finally:
         telemetry.close()
+
+
+def test_comparison_query_does_not_match_only_stop_words_in_visibility_gap(settings):
+    store = Store(settings.data_dir)
+    clear_id, _ = ready_clip(store)
+    occluded_id, _ = ready_clip(store)
+    store.add_evidence(
+        occluded_id,
+        "team-a",
+        5,
+        7,
+        "visibility_gap",
+        "No unique green marker is visible in this interval.",
+        "green-marker-v1",
+    )
+    telemetry = Telemetry(store)
+    try:
+        provider = Provider(settings, store, telemetry)
+        result = asyncio.run(
+            Investigator(store, telemetry, provider).ask(
+                "team-a", [clear_id, occluded_id], "What can we compare about this turn?", "hybrid"
+            )
+        )
+        assert result["status"] == "ready"
+        assert len(result["comparison"]) == 2
+        assert {e["clip_id"] for e in result["evidence"]} == {clear_id, occluded_id}
+        assert all(e["kind"] != "visibility_gap" for e in result["evidence"])
+    finally:
+        telemetry.close()
